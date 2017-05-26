@@ -51,7 +51,7 @@ class Agent(object):
                 q_target = r
             else:
                 q_target = r + 0.99 * np.max(self.sess.run(self.y, feed_dict={self.x: [s_]}))
-            q_targets = [0] * self.action_size
+            q_targets = self.sess.run(self.y, feed_dict={self.x: [s]})[0]
             q_targets[a] = q_target
             batch_q_target.append(q_targets)
         loss, _ = self.sess.run([self.loss, self.train_op], feed_dict={self.q_target: batch_q_target, self.x: batch_s})
