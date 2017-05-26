@@ -29,7 +29,7 @@ class Agent(object):
             y = tf.matmul(y, w) + b
         q_target = tf.placeholder(tf.float32, [None, self.action_size], name='q_target')
         loss = tf.reduce_mean(tf.squared_difference(q_target, y), name='MSE')
-        train_op = tf.train.GradientDescentOptimizer(0.0025).minimize(loss)
+        train_op = tf.train.GradientDescentOptimizer(0.00025).minimize(loss)
         return x, y, q_target, loss, train_op
 
     def take_action(self, obs, epsilon):
