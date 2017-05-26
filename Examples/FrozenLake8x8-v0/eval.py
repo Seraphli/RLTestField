@@ -8,7 +8,7 @@ env = gym.make(env_name)
 shutil.rmtree('/tmp/' + env_name + '-experiment', ignore_errors=True)
 env = wrappers.Monitor(env, '/tmp/' + env_name + '-experiment')
 agent = Agent(1, env.action_space.n)
-agent.load('model-1.pkl')
+agent.load()
 for i_episode in range(3000):
     observation = env.reset()
     for t in range(10000):

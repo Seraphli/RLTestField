@@ -6,13 +6,14 @@ from agent import Agent
 class Game(object):
     def __init__(self):
         gym.undo_logger_setup()
-        self.env = gym.make("FrozenLake8x8-v0")
-        self.agent = Agent(1, self.env.action_space.n)
+        self.env = gym.make("LunarLander-v2")
+        state = self.env.reset()
+        self.agent = Agent(state.shape[0], self.env.action_space.n)
 
     def clear_stat(self):
         self.n_games = 0
         self.min_score = .0
-        self.max_score = .0
+        self.max_score = -50000
         self.total_score = .0
         self.total_step = 0
 
@@ -26,16 +27,7 @@ class Game(object):
                 while self.total_step < step:
                     a = self.env.action_space.sample()
                     s_, r, t, info = self.env.step(a)
-                    if t and r < 1:
-                        tuned_r = -1
-                    else:
-                        if r < 1:
-                            tuned_r = -0.01
-                        else:
-                            tuned_r = r
-                    self.agent.replay.append((s, a, tuned_r, t, s_))
-                    if r > 0 or r < -0.01:
-                        self.agent.pro_replay.append((s, a, tuned_r, t, s_))
+                    self.agent.replay.append((s, a, r, t, s_))
                     s = s_
                     score += r
                     self.total_step += 1
@@ -53,16 +45,7 @@ class Game(object):
                 while self.total_step < step:
                     a = self.agent.train(s)
                     s_, r, t, info = self.env.step(a)
-                    if t and r < 1:
-                        tuned_r = -1
-                    else:
-                        if r < 1:
-                            tuned_r = -0.01
-                        else:
-                            tuned_r = r
-                    self.agent.replay.append((s, a, tuned_r, t, s_))
-                    if r > 0 or r < -0.01:
-                        self.agent.pro_replay.append((s, a, tuned_r, t, s_))
+                    self.agent.replay.append((s, a, r, t, s_))
                     s = s_
                     score += r
                     self.total_step += 1
@@ -80,16 +63,7 @@ class Game(object):
                 while self.total_step < step:
                     a = self.agent.eval(s)
                     s_, r, t, info = self.env.step(a)
-                    if t and r < 1:
-                        tuned_r = -1
-                    else:
-                        if r < 1:
-                            tuned_r = -0.01
-                        else:
-                            tuned_r = r
-                    self.agent.replay.append((s, a, tuned_r, t, s_))
-                    if r > 0 or r < -0.01:
-                        self.agent.pro_replay.append((s, a, tuned_r, t, s_))
+                    self.agent.replay.append((s, a, r, t, s_))
                     s = s_
                     score += r
                     self.total_step += 1
@@ -110,7 +84,7 @@ class Game(object):
             = self.game("Random", 50000)
         print('PHASE: %s, N: %d, STEP: %d, AVG: %f, MIN: %d, MAX: %d' %
               ("Random", n_games, total_step, average_score, min_score, max_score))
-        for _ in range(30):
+        for _ in range(20):
             n_games, total_step, average_score, min_score, max_score \
                 = self.game("Train", 100000)
             print('PHASE: %s, N: %d, STEP: %d, AVG: %f, MIN: %d, MAX: %d' %
