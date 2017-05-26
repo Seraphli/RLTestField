@@ -1,6 +1,7 @@
 import pickle, random, gym
 from agent import Agent
 from tqdm import trange
+from utility.utility import init_logger, get_path
 
 gym.undo_logger_setup()
 
@@ -10,17 +11,16 @@ with open('train_data.pkl', 'rb') as f:
 datum = train_data[0]
 s, a, r, t, s_ = datum
 env_name = 'LunarLander-v2'
+logger = init_logger(env_name)
 env = gym.make(env_name)
-agent = Agent(s.shape[0], env.action_space.n)
+agent = Agent(s.shape[0], env.action_space.n, logger)
 env.close()
 losses = []
-train_eps = 100000
+train_eps = 200000
 for _ in trange(train_eps):
     batch = random.sample(train_data, 32)
     losses.append(agent.train(batch))
 with open('loss.csv', 'w') as f:
     for _ in trange(train_eps):
         f.write('%d, %f\n' % (_, losses[_]))
-# for _ in trange(2):
-#     batch = random.sample(train_data, 32)
-#     agent.train(batch)
+agent.save_session(get_path('tmp' + env_name))

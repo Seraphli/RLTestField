@@ -2,13 +2,14 @@ import tensorflow as tf, os, numpy as np
 
 
 class Agent(object):
-    def __init__(self, state_size, action_size):
-        self.state_size, self.action_size = state_size, action_size
+    def __init__(self, state_size, action_size, logger):
+        self.state_size, self.action_size, self.logger = state_size, action_size, logger
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.2)
         self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
         with tf.device('/gpu'):
             self.x, self.y, self.q_target, self.loss, self.train_op = self.network()
+        self.saver = tf.train.Saver()
         self.sess.run(tf.global_variables_initializer())
         self.step = 0
 
@@ -57,3 +58,16 @@ class Agent(object):
         loss, _ = self.sess.run([self.loss, self.train_op], feed_dict={self.q_target: batch_q_target, self.x: batch_s})
         self.step += 1
         return loss
+
+    def load_session(self, path):
+        checkpoint = tf.train.get_checkpoint_state(path)
+        if checkpoint and checkpoint.model_checkpoint_path:
+            self.saver.restore(self.sess, checkpoint.model_checkpoint_path)
+            self.logger.info('Successfully loaded: %s' % checkpoint.model_checkpoint_path)
+            return True
+        else:
+            self.logger.info('Could not find old network weights')
+            return False
+
+    def save_session(self, path):
+        self.saver.save(self.sess, path + '/model.ckpt', global_step=self.step)
