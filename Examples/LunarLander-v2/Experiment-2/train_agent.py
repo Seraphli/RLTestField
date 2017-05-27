@@ -23,4 +23,4 @@ for _ in trange(train_eps):
 with open('loss.csv', 'w') as f:
     for _ in trange(train_eps):
         f.write('%d, %f\n' % (_, losses[_]))
-agent.save_session(get_path('tmp' + env_name))
+agent.save_session(get_path('tmp/' + env_name))

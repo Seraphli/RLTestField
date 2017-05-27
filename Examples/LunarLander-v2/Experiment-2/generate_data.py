@@ -1,4 +1,4 @@
-import pickle, copy, numpy as np
+import pickle, numpy as np
 
 with open('memory.pkl', 'rb') as f:
     memory = pickle.load(f)
