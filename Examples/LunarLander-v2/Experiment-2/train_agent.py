@@ -16,7 +16,7 @@ env = gym.make(env_name)
 agent = Agent(s.shape[0], env.action_space.n, logger)
 env.close()
 losses = []
-train_eps = 200000
+train_eps = 100000
 for _ in trange(train_eps):
     batch = random.sample(train_data, 32)
     losses.append(agent.train(batch))

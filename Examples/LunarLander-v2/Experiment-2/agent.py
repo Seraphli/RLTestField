@@ -5,7 +5,7 @@ class Agent(object):
     def __init__(self, state_size, action_size, logger):
         self.state_size, self.action_size, self.logger = state_size, action_size, logger
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.2)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.3)
         self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
         with tf.device('/gpu'):
             self.x, self.y, self.q_target, self.loss, self.train_op = self.network()
@@ -17,15 +17,15 @@ class Agent(object):
         w_init, b_init = tf.contrib.layers.xavier_initializer(seed=12345), tf.constant_initializer(0.01)
         x = tf.placeholder(tf.float32, [None, self.state_size], name='input')
         with tf.variable_scope('hidden1'):
-            w = tf.get_variable("w", [self.state_size, 64], initializer=w_init, trainable=True)
-            b = tf.get_variable("b", [64], initializer=b_init, trainable=True)
+            w = tf.get_variable("w", [self.state_size, 128], initializer=w_init, trainable=True)
+            b = tf.get_variable("b", [128], initializer=b_init, trainable=True)
             y = tf.nn.relu(tf.matmul(x, w) + b)
         with tf.variable_scope('hidden2'):
-            w = tf.get_variable("w", [64, 32], initializer=w_init, trainable=True)
-            b = tf.get_variable("b", [32], initializer=b_init, trainable=True)
+            w = tf.get_variable("w", [128, 64], initializer=w_init, trainable=True)
+            b = tf.get_variable("b", [64], initializer=b_init, trainable=True)
             y = tf.nn.relu(tf.matmul(y, w) + b)
         with tf.variable_scope('output'):
-            w = tf.get_variable("w", [32, self.action_size], initializer=w_init, trainable=True)
+            w = tf.get_variable("w", [64, self.action_size], initializer=w_init, trainable=True)
             b = tf.get_variable("b", [self.action_size], initializer=b_init, trainable=True)
             y = tf.matmul(y, w) + b
         q_target = tf.placeholder(tf.float32, [None, self.action_size], name='q_target')
