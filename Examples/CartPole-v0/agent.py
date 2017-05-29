@@ -1,4 +1,4 @@
-import tensorflow as tf
+import tensorflow as tf, numpy as np
 import tensorflow.contrib.layers as layers
 from replay import ReplayBuffer
 
@@ -27,17 +27,25 @@ def minimize_and_clip(optimizer, objective, var_list, clip_val=10):
 class Agent(object):
     def __init__(self, env):
         self._env = env
-        self.sess = tf.Session()
+        tf_config = tf.ConfigProto(
+            inter_op_parallelism_threads=8,
+            intra_op_parallelism_threads=8)
+        self.sess = tf.Session(config=tf_config)
         self.graph = self.build_graph()
         self.replay = ReplayBuffer(50000)
         self.sess.run(tf.global_variables_initializer())
 
     def def_action(self):
-        s = tf.placeholder(tf.float32, [None] + [self._env.observation_space.shape])
+        s = tf.placeholder(tf.float32, [None] + list(self._env.observation_space.shape))
         with tf.variable_scope('q_net', reuse=False):
             q = self.network(s)
         act = tf.argmax(q, axis=1)
         return s, act
+
+    def take_action(self, obs, eps):
+        if np.random.random() < eps:
+            return np.random.randint(self._env.action_space.n)
+        return self.sess.run(self.graph['act'], feed_dict={self.graph['act_s']: np.array(obs)[None]})[0]
 
     def network(self, x):
         y = x
@@ -48,19 +56,19 @@ class Agent(object):
     def build_graph(self):
         act_s, act = self.def_action()
 
-        s = tf.placeholder(tf.float32, [None] + [self._env.observation_space.shape])
+        s = tf.placeholder(tf.float32, [None] + list(self._env.observation_space.shape))
         a = tf.placeholder(tf.int32, [None])
         r = tf.placeholder(tf.float32, [None])
         t = tf.placeholder(tf.float32, [None])
-        s_ = tf.placeholder(tf.float32, [None] + [self._env.observation_space.shape])
+        s_ = tf.placeholder(tf.float32, [None] + list(self._env.observation_space.shape))
 
         with tf.variable_scope('q_net', reuse=True):
             q = self.network(s)
-        q_var = tf.get_collection(tf.GraphKeys.VARIABLES, scope='q_net')
+        q_var = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_net')
 
         with tf.variable_scope('q_target_net', reuse=False):
             q_target = self.network(s_)
-        q_target_var = tf.get_collection(tf.GraphKeys.VARIABLES, scope='q_net')
+        q_target_var = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_net')
 
         q_selected = tf.reduce_sum(q * tf.one_hot(a, self._env.action_space.n), 1)
         q_target_best = tf.reduce_max(q_target, 1)
@@ -81,4 +89,17 @@ class Agent(object):
         update_target_expr = tf.group(*update_target_expr)
 
         return {'act_s': act_s, 'act': act, 's': s, 'a': a, 'r': r, 't': t, 's_': s_, 'train_op': train_op,
-                'update_target_expr': update_target_expr}
+                'loss': loss, 'update_target_expr': update_target_expr}
+
+    def store_transition(self, s, a, r, t, s_):
+        self.replay.add(s, a, r, s_, float(t))
+
+    def train(self):
+        s, a, r, s_, t = self.replay.sample(32)
+        _, loss = self.sess.run([self.graph['train_op'], self.graph['loss']],
+                                feed_dict={self.graph['s']: s, self.graph['a']: a, self.graph['r']: r,
+                                           self.graph['t']: t, self.graph['s_']: s_, })
+        return np.mean(loss)
+
+    def update_target(self):
+        self.sess.run(self.graph['update_target_expr'])
