@@ -27,10 +27,7 @@ def minimize_and_clip(optimizer, objective, var_list, clip_val=10):
 class Agent(object):
     def __init__(self, env):
         self._env = env
-        tf_config = tf.ConfigProto(
-            inter_op_parallelism_threads=8,
-            intra_op_parallelism_threads=8)
-        self.sess = tf.Session(config=tf_config)
+        self.sess = tf.Session()
         self.graph = self.build_graph()
         self.replay = ReplayBuffer(50000)
         self.sess.run(tf.global_variables_initializer())
@@ -48,9 +45,18 @@ class Agent(object):
         return self.sess.run(self.graph['act'], feed_dict={self.graph['act_s']: np.array(obs)[None]})[0]
 
     def network(self, x):
+        w_init, b_init = tf.contrib.layers.xavier_initializer(), tf.zeros_initializer()
         y = x
-        y = layers.fully_connected(y, num_outputs=64, activation_fn=tf.nn.relu)
-        y = layers.fully_connected(y, num_outputs=self._env.action_space.n, activation_fn=None)
+        # y = layers.fully_connected(y, num_outputs=64, activation_fn=tf.nn.relu)
+        # y = layers.fully_connected(y, num_outputs=self._env.action_space.n, activation_fn=None)
+        with tf.variable_scope('hidden'):
+            w = tf.get_variable("w", [list(self._env.observation_space.shape)[0], 64], initializer=w_init)
+            b = tf.get_variable("b", [64], initializer=b_init)
+            y = tf.nn.relu(tf.matmul(y, w) + b)
+        with tf.variable_scope('output'):
+            w = tf.get_variable("w", [64, self._env.action_space.n], initializer=w_init)
+            b = tf.get_variable("b", [self._env.action_space.n], initializer=b_init)
+            y = tf.matmul(y, w) + b
         return y
 
     def build_graph(self):
@@ -75,7 +81,7 @@ class Agent(object):
 
         q_target_best_masked = (1.0 - t) * q_target_best
 
-        q_target_selected = r + 1.0 * q_target_best_masked
+        q_target_selected = r + 0.99 * q_target_best_masked
         error = q_selected - tf.stop_gradient(q_target_selected)
         loss = tf.reduce_mean(huber_loss(error))
 

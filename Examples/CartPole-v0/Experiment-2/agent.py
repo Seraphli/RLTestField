@@ -14,23 +14,19 @@ class Agent(object):
         self.step = 0
 
     def network(self):
-        w_init, b_init = tf.contrib.layers.xavier_initializer(seed=12345), tf.constant_initializer(0.01)
+        w_init, b_init = tf.contrib.layers.xavier_initializer(), tf.zeros_initializer()
         x = tf.placeholder(tf.float32, [None, self.state_size], name='input')
-        with tf.variable_scope('hidden1'):
-            w = tf.get_variable("w", [self.state_size, 15], initializer=w_init, trainable=True)
-            b = tf.get_variable("b", [15], initializer=b_init, trainable=True)
+        with tf.variable_scope('hidden'):
+            w = tf.get_variable("w", [self.state_size, 64], initializer=w_init, trainable=True)
+            b = tf.get_variable("b", [64], initializer=b_init, trainable=True)
             y = tf.sigmoid(tf.matmul(x, w) + b)
-        with tf.variable_scope('hidden2'):
-            w = tf.get_variable("w", [15, 12], initializer=w_init, trainable=True)
-            b = tf.get_variable("b", [12], initializer=b_init, trainable=True)
-            y = tf.sigmoid(tf.matmul(y, w) + b)
         with tf.variable_scope('output'):
-            w = tf.get_variable("w", [12, self.action_size], initializer=w_init, trainable=True)
+            w = tf.get_variable("w", [64, self.action_size], initializer=w_init, trainable=True)
             b = tf.get_variable("b", [self.action_size], initializer=b_init, trainable=True)
             y = tf.matmul(y, w) + b
         q_target = tf.placeholder(tf.float32, [None, self.action_size], name='q_target')
         loss = tf.reduce_mean(tf.squared_difference(q_target, y), name='MSE')
-        train_op = tf.train.GradientDescentOptimizer(0.0025).minimize(loss)
+        train_op = tf.train.AdamOptimizer(learning_rate=0.001).minimize(loss)
         return x, y, q_target, loss, train_op
 
     def take_action(self, obs, epsilon):
