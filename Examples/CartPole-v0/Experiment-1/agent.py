@@ -35,7 +35,7 @@ class Agent(object):
     def def_action(self):
         s = tf.placeholder(tf.float32, [None] + list(self._env.observation_space.shape))
         with tf.variable_scope('q_net', reuse=False):
-            q = self.network(s)
+            q, _ = self.network(s)
         act = tf.argmax(q, axis=1)
         return s, act
 
@@ -49,15 +49,18 @@ class Agent(object):
         y = x
         # y = layers.fully_connected(y, num_outputs=64, activation_fn=tf.nn.relu)
         # y = layers.fully_connected(y, num_outputs=self._env.action_space.n, activation_fn=None)
+        weights = []
         with tf.variable_scope('hidden'):
             w = tf.get_variable("w", [list(self._env.observation_space.shape)[0], 64], initializer=w_init)
             b = tf.get_variable("b", [64], initializer=b_init)
             y = tf.nn.relu(tf.matmul(y, w) + b)
+        weights += [w, b]
         with tf.variable_scope('output'):
             w = tf.get_variable("w", [64, self._env.action_space.n], initializer=w_init)
             b = tf.get_variable("b", [self._env.action_space.n], initializer=b_init)
             y = tf.matmul(y, w) + b
-        return y
+        weights += [w, b]
+        return y, weights
 
     def build_graph(self):
         act_s, act = self.def_action()
@@ -69,11 +72,11 @@ class Agent(object):
         s_ = tf.placeholder(tf.float32, [None] + list(self._env.observation_space.shape))
 
         with tf.variable_scope('q_net', reuse=True):
-            q = self.network(s)
+            q, q_net_w = self.network(s)
         q_var = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_net')
 
         with tf.variable_scope('q_target_net', reuse=False):
-            q_target = self.network(s_)
+            q_target, q_target_w = self.network(s_)
         q_target_var = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_target_net')
 
         q_selected = tf.reduce_sum(q * tf.one_hot(a, self._env.action_space.n), 1)
@@ -88,11 +91,12 @@ class Agent(object):
         opt = tf.train.AdamOptimizer(learning_rate=0.001)
         train_op = minimize_and_clip(opt, loss, q_var)
 
-        update_target_expr = []
-        for var, var_target in zip(sorted(q_var, key=lambda v: v.name),
-                                   sorted(q_target_var, key=lambda v: v.name)):
-            update_target_expr.append(var_target.assign(var))
-        update_target_expr = tf.group(*update_target_expr)
+        update_target_expr = [tf.assign(t, o) for t, o in zip(q_target_w, q_net_w)]
+        # update_target_expr = []
+        # for var, var_target in zip(sorted(q_var, key=lambda v: v.name),
+        #                            sorted(q_target_var, key=lambda v: v.name)):
+        #     update_target_expr.append(var_target.assign(var))
+        # update_target_expr = tf.group(*update_target_expr)
 
         return {'act_s': act_s, 'act': act, 's': s, 'a': a, 'r': r, 't': t, 's_': s_, 'train_op': train_op,
                 'loss': loss, 'update_target_expr': update_target_expr}
