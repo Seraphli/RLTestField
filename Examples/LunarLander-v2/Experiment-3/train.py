@@ -1,13 +1,13 @@
 import gym, numpy as np
 from agent import Agent
 
-env = gym.make("CartPole-v0")
+env = gym.make("LunarLander-v2")
 agent = Agent(env)
 s = env.reset()
 episode_rewards = [0.0]
 loss = 0
-for step in range(100000):
-    eps = max(min(1.0 + (0.02 - 1.0) * step / 10000, 1.0), 0.02)
+for step in range(1000000):
+    eps = max(min(1.0 + (0.01 - 1.0) * step / 100000, 1.0), 0.02)
     a = agent.take_action(s, eps)
     s_, r, t, info = env.step(a)
     agent.store_transition(s, a, r, t, s_)
