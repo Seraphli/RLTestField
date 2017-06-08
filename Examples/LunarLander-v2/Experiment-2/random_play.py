@@ -21,8 +21,8 @@ def play():
 
 
 memory = PriorityQueue()
-memory_size = 50
-for i in trange(2000):
+memory_size = 100
+for i in trange(20000):
     seq = play()
     memory.push(seq.score, seq)
     if len(memory) > memory_size:
